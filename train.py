@@ -6,7 +6,7 @@ from common import stub, N_GPUS, GPU_MEM, BASE_MODELS, VOLUME_CONFIG
 @stub.function(
     volumes=VOLUME_CONFIG,
     memory=1024 * 100,
-    timeout=3600 * 4,
+    timeout=3600 * 10,
 )
 def download(model_name: str):
     from huggingface_hub import snapshot_download
@@ -56,16 +56,20 @@ def train(train_kwargs):
 @stub.local_entrypoint()  # Runs locally to kick off remote training job.
 def main(
     dataset: str,
-    base: str = "chat7",
+    base: str = "code13",
     run_id: str = "",
-    num_epochs: int = 10,
+    num_epochs: int = 1,
     batch_size: int = 16,
+    project_name: str = None
 ):
     print(f"Welcome to Modal Llama fine-tuning.")
 
     model_name = BASE_MODELS[base]
     print(f"Syncing base model {model_name} to volume.")
     download.remote(model_name)
+
+    if not project_name:
+        project_name = model_name.split("/")[-1]
 
     if not run_id:
         import secrets
@@ -98,8 +102,11 @@ def main(
             # --- PEFT options ---
             "use_peft": True,
             "peft_method": "lora",
-            "lora_config.r": 8,
-            "lora_config.lora_alpha": 16,
+            "lora_config.r": 256,
+            "lora_config.lora_alpha": 512,
+
+
+            "project_name": project_name
         }
     )
 
